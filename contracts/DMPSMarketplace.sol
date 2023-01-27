@@ -6,12 +6,12 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 // import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract DMPSMarketplace is ERC721URIStorage, Ownable {
     using Counters for Counters.Counter ;
 
     Counters.Counter nft_counter ;
-    Counters.Counter nft_sold_counter ;
 
     address private marketplace_addr ;
 
@@ -36,20 +36,20 @@ contract DMPSMarketplace is ERC721URIStorage, Ownable {
 
         nft_counter.increment() ;
 
-        uint256 new_nft_id = nft_counter.current() ;
+        uint256 tokenId = nft_counter.current() ;
 
-        _safeMint(minter, new_nft_id) ;
-        // _setTokenURI(new_nft_id, uri);
+        _safeMint(minter, tokenId) ;
+        _setTokenURI(tokenId, Strings.toString(tokenId));
 
-        nfts[new_nft_id] = nft(
-            new_nft_id,
+        nfts[tokenId] = nft(
+            tokenId,
             option,
             msg.sender
         );
 
-        _transfer(minter, marketplace_addr, new_nft_id);
+        _transfer(minter, marketplace_addr, tokenId);
 
-        return new_nft_id ;
+        return tokenId ;
     }
 
     function fetchNFTs() public view returns(nft[] memory) {
