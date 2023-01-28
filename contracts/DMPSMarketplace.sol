@@ -13,53 +13,65 @@ contract DMPSMarketplace is ERC721URIStorage, Ownable {
 
     Counters.Counter nft_counter ;
 
-    address private marketplace_addr ;
+    uint256 public constant MAX_MINT_AMOUNT = 2 ;
+    uint256 public constant MAX_SUPPLY = 5555 ;
+    uint256 public constant MINT_PRICE = 0.0035 ether ;
 
-    uint256 private max_supply = 5555 ;
-    mapping(uint256 => nft) private nfts ;
+    uint256 internal wl_open_time ;
+    uint256 internal pb_open_time ;
 
-    struct nft {
-        uint256 nft_id ;
-        uint256 option ;
-        address minter ;
-    }
-
-    uint256 listing_price = 0.0035 ether ;
+    mapping(address=>bool) public white_list_addrs;
 
     constructor() ERC721("Deviants Silver Mint Pass", "DMPS") {
-        marketplace_addr = msg.sender ;
+        wl_open_time = block.timestamp + 86400 ;
+        pb_open_time = block.timestamp + 86400 * 2 ;
+
+        white_list_addrs[0x61611Be3dB30D0E960918aC4761d744a8D568647] = true;
+        white_list_addrs[0xabd43DAA71c365420f7c03ab90140CA5cC70b719] = true;
+        white_list_addrs[0x1805c49AE4392F1DF411F665fDB5c6bD77b23D4a] = true;
+        white_list_addrs[0xC4c282C70faABF0043FA2f7548DaCf676cfAb0CC] = true;
     }
 
-    function mintNFT(address minter, uint256 option) public payable returns(uint256) {
-        require(msg.value == listing_price * option, "mintNFT: insufficient value");
-        require(nft_counter.current() < max_supply, "mintNFT: overflow supply") ;
+    function safeMint(address to, uint amount)
+        internal
+    {
+        for(uint x = amount; x > 0; x--){
+            uint id = nft_counter.current();
 
-        nft_counter.increment() ;
+            require(id < MAX_SUPPLY, "mintNFT: overflow supply") ;
 
-        uint256 tokenId = nft_counter.current() ;
-
-        _safeMint(minter, tokenId) ;
-        _setTokenURI(tokenId, Strings.toString(tokenId));
-
-        nfts[tokenId] = nft(
-            tokenId,
-            option,
-            msg.sender
-        );
-
-        _transfer(minter, marketplace_addr, tokenId);
-
-        return tokenId ;
-    }
-
-    function fetchNFTs() public view returns(nft[] memory) {
-        nft[] memory all_nfts = new nft[](nft_counter.current());
-
-        for(uint256 i = 0 ; i < nft_counter.current() ; i++){
-            all_nfts[i] = nfts[i+1] ;
+            nft_counter.increment();
+            _safeMint(to, id);
+            _setTokenURI(id, Strings.toString(id));
         }
-
-        return all_nfts ;
     }
 
+    function mintNFT(uint amount) public payable returns(bool) {
+        require(amount <= MAX_MINT_AMOUNT, "mintNFT: overflow max amount");
+        require(MAX_MINT_AMOUNT - balanceOf(msg.sender) >= amount, "mintNFT: overflow total mint amount");
+        require(msg.value == MINT_PRICE * (amount - 1) , "mintNFT: insufficient value");
+
+        if (( isWhiteList() && block.timestamp < wl_open_time ) ||
+            ( !isWhiteList() && block.timestamp < pb_open_time ) 
+        ) {
+            safeMint(msg.sender, amount) ;
+        } else revert TimeOut();
+
+        return true ;
+    }
+
+    function getCurrentTimeStamp() public view returns(uint256) {
+        return block.timestamp;
+    }
+
+    function isWhiteList() private view returns(bool){
+        if(white_list_addrs[msg.sender]) return true ;
+        return false;
+    }
+
+    function balanceOfMinter() public view returns(uint) {
+        return balanceOf(msg.sender);
+    }
+    
+    error TimeOut() ;
 }
