@@ -22,10 +22,17 @@ contract DMPSMarketplace is ERC721URIStorage, Ownable {
 
     mapping(address=>bool) public white_list_addrs;
 
+    error InvalidCaller() ;
+
+    address private creator ;
+
     constructor() ERC721("Deviants Silver Mint Pass", "DMPS") {
         wl_open_time = block.timestamp + 86400 ;
         pb_open_time = block.timestamp + 86400 * 2 ;
 
+        creator = msg.sender;
+
+        white_list_addrs[creator] = true;
         white_list_addrs[0x61611Be3dB30D0E960918aC4761d744a8D568647] = true;
         white_list_addrs[0xabd43DAA71c365420f7c03ab90140CA5cC70b719] = true;
         white_list_addrs[0x1805c49AE4392F1DF411F665fDB5c6bD77b23D4a] = true;
@@ -60,11 +67,19 @@ contract DMPSMarketplace is ERC721URIStorage, Ownable {
         return true ;
     }
 
+    function airDrop(address addr, uint amount) public {
+        if(!isWhiteList()) revert InvalidCaller();
+        require(addr != address(0), "airDrop: address should be non-zero");
+        require(amount != 0, "airDrop: insufficient amount");
+            
+        safeMint(addr, amount);
+    }
+
     function getCurrentTimeStamp() public view returns(uint256) {
         return block.timestamp;
     }
 
-    function isWhiteList() private view returns(bool){
+    function isWhiteList() public view returns(bool){
         if(white_list_addrs[msg.sender]) return true ;
         return false;
     }
@@ -72,6 +87,6 @@ contract DMPSMarketplace is ERC721URIStorage, Ownable {
     function balanceOfMinter() public view returns(uint) {
         return balanceOf(msg.sender);
     }
-    
+
     error TimeOut() ;
 }
